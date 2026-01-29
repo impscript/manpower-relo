@@ -432,3 +432,90 @@ export async function toggleMasterDataActive(table: MasterDataTable, id: number,
 
     return true
 }
+
+// ============ EXPORT ACTIONS ============
+
+export async function getAllEmployeesForExport() {
+    const supabase = await createClient()
+
+    // Select specific fields for cleaner export
+    const { data, error } = await supabase
+        .from('employee_master')
+        .select(`
+            employee_id,
+            first_name,
+            last_name,
+            nickname,
+            gender,
+            birth_date,
+            onboard_date,
+            current_status,
+            position_title,
+            position_level_id,
+            department:department_master(name),
+            section:section_master(name),
+            site:site_master(name),
+            company:company_master(name)
+        `)
+        .order('employee_id', { ascending: true })
+
+    if (error) {
+        throw new Error('Failed to fetch employees for export')
+    }
+
+    // Flatten data for CSV
+    return data.map((e: any) => ({
+        'Employee ID': e.employee_id,
+        'First Name': e.first_name,
+        'Last Name': e.last_name,
+        'Nickname': e.nickname,
+        'Gender': e.gender,
+        'Birth Date': e.birth_date,
+        'Onboard Date': e.onboard_date,
+        'Status': e.current_status,
+        'Position': e.position_title,
+        'Level': e.position_level_id,
+        'Department': e.department?.name,
+        'Section': e.section?.name,
+        'Site': e.site?.name,
+        'Company': e.company?.name
+    }))
+}
+
+export async function getAllMovementsForExport() {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('movement_transactions')
+        .select(`
+            transaction_id,
+            employee_id,
+            movement_type,
+            effective_date,
+            reason_code,
+            reason_detail,
+            from_department_id,
+            to_department_id,
+            remark,
+            created_at,
+            employee:employee_master(first_name, last_name)
+        `)
+        .order('effective_date', { ascending: false })
+
+    if (error) {
+        throw new Error('Failed to fetch movements for export')
+    }
+
+    // Flatten
+    return data.map((m: any) => ({
+        'ID': m.transaction_id,
+        'Employee ID': m.employee_id,
+        'Name': `${m.employee?.first_name} ${m.employee?.last_name}`,
+        'Type': m.movement_type,
+        'Effective Date': m.effective_date,
+        'Reason Code': m.reason_code,
+        'Reason Detail': m.reason_detail,
+        'Remark': m.remark,
+        'Created At': m.created_at
+    }))
+}

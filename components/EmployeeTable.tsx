@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getEmployees, deleteEmployee, getMasterData } from '@/lib/actions'
-import { Search, ChevronLeft, ChevronRight, Loader2, Edit, Trash2, User, UserCircle } from 'lucide-react'
+import { getEmployees, deleteEmployee, getMasterData, getAllEmployeesForExport } from '@/lib/actions'
+import { Search, ChevronLeft, ChevronRight, Loader2, Edit, Trash2, User, UserCircle, Download } from 'lucide-react'
 import type { Employee } from '@/lib/types'
+import { downloadCSV } from '@/lib/export-utils'
 
 // Gender icon component
 function GenderIcon({ gender }: { gender: string | null }) {

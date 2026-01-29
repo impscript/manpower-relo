@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { MovementTable } from '@/components/MovementTable'
 import { MovementModal } from '@/components/MovementModal'
-import { Plus } from 'lucide-react'
+import { Plus, Download } from 'lucide-react'
+import { getAllMovementsForExport } from '@/lib/actions'
+import { downloadCSV } from '@/lib/export-utils'
 
 import { MovementTransaction } from '@/lib/types'
 
@@ -21,6 +23,17 @@ export default function MovementsPage() {
         setIsModalOpen(true)
     }
 
+    const handleExport = async () => {
+        try {
+            const data = await getAllMovementsForExport()
+            const today = new Date().toISOString().split('T')[0]
+            downloadCSV(data, `movements_export_${today}.csv`)
+        } catch (error) {
+            console.error('Export failed:', error)
+            alert('Failed to export data')
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -29,7 +42,13 @@ export default function MovementsPage() {
                     <p className="text-gray-500 mt-1">Transaction logs of all hiring, transfer, and resignation activities</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition">Export</button>
+                    <button
+                        onClick={handleExport}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition flex items-center gap-2"
+                    >
+                        <Download size={20} />
+                        Export
+                    </button>
                     <button
                         onClick={() => {
                             setSelectedMovement(undefined)
