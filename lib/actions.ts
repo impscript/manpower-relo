@@ -438,33 +438,33 @@ export async function toggleMasterDataActive(table: MasterDataTable, id: number,
 export async function getAllEmployeesForExport() {
     const supabase = await createClient()
 
-    // Select specific fields for cleaner export
-    const { data, error } = await supabase
+    // 1. Fetch Employees
+    const { data: employees, error } = await supabase
         .from('employee_master')
-        .select(`
-            employee_id,
-            first_name,
-            last_name,
-            nickname,
-            gender,
-            birth_date,
-            onboard_date,
-            current_status,
-            position_title,
-            position_level_id,
-            department:department_master(name),
-            section:section_master(name),
-            site:site_master(name),
-            company:company_master(name)
-        `)
+        .select('*')
         .order('employee_id', { ascending: true })
 
     if (error) {
         throw new Error('Failed to fetch employees for export')
     }
 
-    // Flatten data for CSV
-    return data.map((e: any) => ({
+    // 2. Fetch Lookup Data Manually (since FKs might be missing)
+    const [depts, sections, sites, companies, levels] = await Promise.all([
+        getMasterData('departments'),
+        getMasterData('sections'),
+        getMasterData('sites'),
+        getMasterData('companies'),
+        getAllPositionLevels()
+    ])
+
+    const deptMap = new Map(depts.map(d => [d.id, d.name]))
+    const sectMap = new Map(sections.map(s => [s.id, s.name]))
+    const siteMap = new Map(sites.map(s => [s.id, s.code || s.name]))
+    const compMap = new Map(companies.map(c => [c.id, c.code || c.name]))
+    const levelMap = new Map(levels.map(l => [l.id, l.level_name]))
+
+    // 3. Map Data
+    return employees.map((e: any) => ({
         'Employee ID': e.employee_id,
         'First Name': e.first_name,
         'Last Name': e.last_name,
@@ -474,43 +474,48 @@ export async function getAllEmployeesForExport() {
         'Onboard Date': e.onboard_date,
         'Status': e.current_status,
         'Position': e.position_title,
-        'Level': e.position_level_id,
-        'Department': e.department?.name,
-        'Section': e.section?.name,
-        'Site': e.site?.name,
-        'Company': e.company?.name
+        'Level': e.position_level_id ? levelMap.get(e.position_level_id) || e.position_level_id : '',
+        'Department': e.department_id ? deptMap.get(e.department_id) || '' : '',
+        'Section': e.section_id ? sectMap.get(e.section_id) || '' : '',
+        'Site': e.site_id ? siteMap.get(e.site_id) || '' : '',
+        'Company': e.company_id ? compMap.get(e.company_id) || '' : ''
     }))
 }
 
 export async function getAllMovementsForExport() {
     const supabase = await createClient()
 
-    const { data, error } = await supabase
+    // 1. Fetch Movements
+    const { data: movements, error } = await supabase
         .from('movement_transactions')
-        .select(`
-            transaction_id,
-            employee_id,
-            movement_type,
-            effective_date,
-            reason_code,
-            reason_detail,
-            from_department_id,
-            to_department_id,
-            remark,
-            created_at,
-            employee:employee_master(first_name, last_name)
-        `)
+        .select('*') // No inner join to avoid FK issues
         .order('effective_date', { ascending: false })
 
     if (error) {
         throw new Error('Failed to fetch movements for export')
     }
 
-    // Flatten
-    return data.map((m: any) => ({
+    // 2. Fetch Related Data
+    const empIds = [...new Set(movements.map((m: any) => m.employee_id).filter(Boolean))]
+
+    // Fetch employee names in batch
+    let empMap = new Map()
+    if (empIds.length > 0) {
+        const { data: employees } = await supabase
+            .from('employee_master')
+            .select('employee_id, first_name, last_name')
+            .in('employee_id', empIds)
+
+        if (employees) {
+            empMap = new Map(employees.map((e: any) => [e.employee_id, `${e.first_name} ${e.last_name}`]))
+        }
+    }
+
+    // 3. Flatten
+    return movements.map((m: any) => ({
         'ID': m.transaction_id,
         'Employee ID': m.employee_id,
-        'Name': `${m.employee?.first_name} ${m.employee?.last_name}`,
+        'Name': empMap.get(m.employee_id) || 'Unknown',
         'Type': m.movement_type,
         'Effective Date': m.effective_date,
         'Reason Code': m.reason_code,
