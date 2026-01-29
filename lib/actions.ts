@@ -160,6 +160,24 @@ export async function createMovement(data: Record<string, unknown>) {
         throw new Error('Failed to create movement')
     }
 
+    // Auto-update Employee Status if Resignation/Termination and Effective Date <= Today
+    const type = data.movement_type as string
+    const effDate = new Date(data.effective_date as string)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset time to midnight for comparison
+
+    if (effDate <= today && (type.includes('Resignation') || type.includes('Terminated') || type.includes('Retirement'))) {
+        const status = type.includes('Terminated') ? 'Terminated' : 'Resigned'
+
+        await supabase
+            .from('employee_master')
+            .update({
+                current_status: status,
+                resigned_date: data.effective_date
+            })
+            .eq('employee_id', data.employee_id)
+    }
+
     return true
 }
 
@@ -174,6 +192,24 @@ export async function updateMovement(id: number, data: Record<string, unknown>) 
     if (error) {
         console.error('Error updating movement:', error)
         throw new Error('Failed to update movement')
+    }
+
+    // Auto-update Employee Status Logic (Same as create)
+    const type = data.movement_type as string
+    const effDate = new Date(data.effective_date as string)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (effDate <= today && (type.includes('Resignation') || type.includes('Terminated') || type.includes('Retirement'))) {
+        const status = type.includes('Terminated') ? 'Terminated' : 'Resigned'
+
+        await supabase
+            .from('employee_master')
+            .update({
+                current_status: status,
+                resigned_date: data.effective_date
+            })
+            .eq('employee_id', data.employee_id)
     }
 
     return true
