@@ -57,7 +57,7 @@ export function ReasonDonut({ data }: { data: { name: string; value: number }[] 
                                 <LabelList
                                     dataKey="percent"
                                     position="right"
-                                    formatter={(value: string | number) => `${value}%`}
+                                    formatter={(value) => value != null ? `${value}%` : ''}
                                     style={{ fontSize: 11, fill: '#374151' }}
                                 />
                             </Bar>
