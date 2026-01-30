@@ -3,14 +3,16 @@ import { getLeavingReasons } from '@/lib/actions'
 import { TrendChart } from '@/components/TrendChart'
 import { GenPyramid } from '@/components/GenPyramid'
 import { ReasonDonut } from '@/components/ReasonDonut'
-import { AttritionTable } from '@/components/AttritionTable'
 import { ServiceYearsChart } from '@/components/ServiceYearsChart'
-import { TrendingUp, Users, UserMinus, Activity } from 'lucide-react'
+import { GenderPieChart } from '@/components/GenderPieChart'
+import { MovementSummaryChart } from '@/components/MovementSummaryChart'
+import { PositionLevelPieChart } from '@/components/PositionLevelPieChart'
+import { Users, TrendingDown } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Dashboard() {
-  const [{ employees, movements }, leavingReasons] = await Promise.all([
+  const [{ employees, movements, positionLevels }, leavingReasons] = await Promise.all([
     getDashboardData(),
     getLeavingReasons()
   ])
@@ -24,17 +26,37 @@ export default async function Dashboard() {
   // 1. KPI Calculations
   const totalHeadcount = employees.length
 
-  // Count Resignations (Voluntary + Involuntary)
-  const resignations = movements.filter(m => m.movement_type.includes('Resignation')).length
-  const newHires = movements.filter(m => m.movement_type === 'New Hired').length
+  // Count Movements by Type
+  const movementCounts: Record<string, number> = {}
+  movements.forEach(m => {
+    const type = m.movement_type
+    movementCounts[type] = (movementCounts[type] || 0) + 1
+  })
 
-  // Turnover Rate (Simple Calc: Resignations / Current Headcount) - strictly speaking should be average headcount but this is fine for snapshot
+  const totalMovements = movements.length
+  const movementData = Object.entries(movementCounts).map(([name, value]) => ({
+    name,
+    value,
+    percent: totalMovements > 0 ? parseFloat(((value / totalMovements) * 100).toFixed(0)) : 0
+  }))
+
+  // Resignations count
+  const resignations = movements.filter(m => m.movement_type.includes('Resignation')).length
+
+  // Turnover Rate (Simple Calc: Resignations / Current Headcount)
   const turnoverRate = totalHeadcount > 0 ? ((resignations / totalHeadcount) * 100).toFixed(1) : '0.0'
 
-  // Hire vs Exit Ratio
-  const hireExitRatio = resignations > 0 ? (newHires / resignations).toFixed(2) : newHires.toString()
+  // 2. Gender Distribution
+  const genderCounts: Record<string, number> = { 'Male': 0, 'Female': 0 }
+  employees.forEach(e => {
+    const gender = e.gender || 'Unknown'
+    if (gender === 'Male' || gender === 'Female') {
+      genderCounts[gender]++
+    }
+  })
+  const genderData = Object.entries(genderCounts).map(([name, value]) => ({ name, value }))
 
-  // 2. Trend Data Preparation
+  // 3. Trend Data Preparation
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   const trendMap = new Map<number, { name: string; hired: number; left: number }>()
 
@@ -59,18 +81,34 @@ export default async function Dashboard() {
 
   const trendData = Array.from(trendMap.values())
 
-  // 3. Demographics (Gen Pyramid)
+  // 4. Demographics (Gen Pyramid)
   const genCounts: Record<string, number> = { 'Gen Z': 0, 'Gen Y': 0, 'Gen X': 0, 'Baby Boomer': 0 }
   employees.forEach(e => {
     const gen = e.generation || 'Unknown'
     if (genCounts[gen] !== undefined) genCounts[gen]++
   })
 
-  const genData = Object.entries(genCounts).map(([name, value]) => ({ name, value }))
+  const genData = Object.entries(genCounts)
+    .filter(([, value]) => value > 0)
+    .map(([name, value]) => ({ name, value }))
 
-  // 4. Reasons for Leaving
+  // 5. Position Level Distribution
+  const positionCounts: Record<number, number> = {}
+  employees.forEach(e => {
+    if (e.position_level_id) {
+      positionCounts[e.position_level_id] = (positionCounts[e.position_level_id] || 0) + 1
+    }
+  })
+
+  const positionData = positionLevels
+    .filter(pl => positionCounts[pl.id])
+    .map(pl => ({
+      name: pl.level_name,
+      value: positionCounts[pl.id] || 0
+    }))
+
+  // 6. Reasons for Leaving
   const reasonCounts: Record<string, number> = {}
-  console.log(`Total movements: ${movements.length}`)
 
   movements.filter(m => m.reason_code).forEach(m => {
     // Use Reason Detail or mapped name or code
@@ -81,7 +119,6 @@ export default async function Dashboard() {
     label = label || 'Unknown'
     reasonCounts[label] = (reasonCounts[label] || 0) + 1
   })
-  console.log('Reason Counts:', reasonCounts)
 
   // Sort and take top 5
   const reasonData = Object.entries(reasonCounts)
@@ -89,7 +126,7 @@ export default async function Dashboard() {
     .slice(0, 5)
     .map(([name, value]) => ({ name, value }))
 
-  // 4.5 Service Years Distribution
+  // 7. Service Years Distribution
   const tenureBuckets = {
     '< 120 Days': 0,
     '120d - 1yr': 0,
@@ -117,10 +154,11 @@ export default async function Dashboard() {
     else tenureBuckets['> 20 yrs']++
   })
 
-  const tenureData = Object.entries(tenureBuckets).map(([name, value]) => ({ name, value }))
+  const tenureData = Object.entries(tenureBuckets)
+    .filter(([, value]) => value > 0)
+    .map(([name, value]) => ({ name, value }))
 
-  // 5. Attrition Risk List
-  // Filter for Probation Fail or just plain short tenure who left
+  // 8. Attrition Risk List
   const attritionData = movements
     .filter(m => (m.is_probation_fail || m.service_year < 1.0) && (m.movement_type.includes('Resignation') || m.movement_type.includes('Terminated')))
     .map(m => ({
@@ -133,52 +171,60 @@ export default async function Dashboard() {
     }))
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-800">Executive Summary</h2>
-          <p className="text-gray-500 mt-1">Real-time manpower insights and retention analytics</p>
+          <h2 className="text-2xl font-bold text-gray-800">Manpower Dashboard</h2>
+          <p className="text-gray-500 mt-1">Real-time manpower insights and analytics</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">Live Data</span>
-          <span className="text-sm text-gray-400">Last updated: Today</span>
+          <span className="text-sm text-gray-400">Year 2026</span>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <KPICard title="Total Headcount" value={totalHeadcount.toString()} sub="Active Employees" icon={<Users className="text-blue-500" />} />
-        <KPICard title="Turnover Rate (YTD)" value={`${turnoverRate}%`} sub="Annualized Projection" icon={<UserMinus className="text-red-500" />} />
-        <KPICard title="Hire Ratio" value={hireExitRatio} sub="Hires per Departure" icon={<Activity className="text-purple-500" />} />
-        <KPICard title="New Hires" value={newHires.toString()} sub="Year to Date" icon={<TrendingUp className="text-green-500" />} />
+      {/* Top Section: KPI + Gender + Movement Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Headcount KPI Card */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Headcount</p>
+              <h3 className="text-4xl font-bold text-gray-800 mt-2">{totalHeadcount}</h3>
+              <p className="text-xs text-gray-400 mt-1">Active Employees</p>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-xl">
+              <Users className="text-blue-500 w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <TrendingDown className="w-4 h-4 text-red-500" />
+            <span className="text-sm text-red-500 font-medium">{turnoverRate}%</span>
+            <span className="text-xs text-gray-400">Turnover Rate</span>
+          </div>
+        </div>
+
+        {/* Gender Distribution */}
+        <GenderPieChart data={genderData} />
+
+        {/* Movement Summary - spans 2 columns */}
+        <div className="lg:col-span-2">
+          <MovementSummaryChart data={movementData} />
+        </div>
       </div>
 
-      {/* Main Charts Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TrendChart data={trendData} />
-        <GenPyramid data={genData} />
-        <ReasonDonut data={reasonData} />
+      {/* Middle Section: 3 Pie Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <ServiceYearsChart data={tenureData} />
+        <PositionLevelPieChart data={positionData} />
+        <GenPyramid data={genData} />
       </div>
 
-      <AttritionTable data={attritionData} />
-    </div>
-  )
-}
-
-function KPICard({ title, value, sub, icon }: { title: string, value: string, sub: string, icon: any }) {
-  return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <h3 className="text-3xl font-bold text-gray-800 mt-2">{value}</h3>
-          <p className="text-xs text-gray-400 mt-1">{sub}</p>
-        </div>
-        <div className="p-3 bg-gray-50 rounded-xl">
-          {icon}
-        </div>
+      {/* Bottom Section: Reasons + Trend */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ReasonDonut data={reasonData} />
+        <TrendChart data={trendData} />
       </div>
     </div>
   )

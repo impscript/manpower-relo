@@ -10,6 +10,14 @@ export type Employee = {
     education_level: string
     onboard_date: string
     current_status: string
+    position_level_id: number | null
+}
+
+export type PositionLevel = {
+    id: number
+    level_code: string
+    level_name: string
+    sort_order: number
 }
 
 export type Organization = {
@@ -75,6 +83,9 @@ export async function getDashboardData() {
     const { data: orgs, error: orgError } = await supabase.from('organization').select('*')
     if (orgError) throw orgError
 
+    const { data: positionLevels, error: plError } = await supabase.from('position_levels').select('*').order('sort_order')
+    if (plError) throw plError
+
     // Join and Process Data
     const enrichedMovements: EnrichedMovement[] = movements.map((mov) => {
         const emp = employees.find((e) => e.employee_id === mov.employee_id)
@@ -131,6 +142,7 @@ export async function getDashboardData() {
     return {
         employees: activeEmployees,
         movements: enrichedMovements,
-        orgs
+        orgs,
+        positionLevels: positionLevels as PositionLevel[]
     }
 }
