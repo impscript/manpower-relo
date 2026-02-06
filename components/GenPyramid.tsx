@@ -47,14 +47,14 @@ export function GenPyramid({ data }: { data: { name: string; value: number }[] }
             <h3 className="text-lg font-semibold text-gray-800 mb-2">By Generation</h3>
             <div className="flex-1 min-h-0 flex">
                 {/* Left side - Highlight */}
-                <div className="w-1/3 flex flex-col justify-center pr-2 border-r">
+                <div className="w-24 flex flex-col justify-center pr-2 border-r flex-shrink-0">
                     <div className="text-4xl font-bold text-blue-600">{topPercent}%</div>
-                    <div className="text-sm text-gray-600 mt-1">{topItem.name}</div>
+                    <div className="text-sm text-gray-600 mt-1 truncate" title={topItem.name}>{topItem.name}</div>
                     <div className="text-xs text-gray-400 mt-1">{genAgeMap[topItem.name] || ''}</div>
                 </div>
 
                 {/* Center - Pie Chart */}
-                <div className="w-1/3 relative">
+                <div className="flex-1 min-w-0 relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -63,7 +63,7 @@ export function GenPyramid({ data }: { data: { name: string; value: number }[] }
                                 cy="50%"
                                 labelLine={false}
                                 label={renderCustomizedLabel}
-                                outerRadius={70}
+                                outerRadius="80%"
                                 dataKey="value"
                             >
                                 {data.map((entry, index) => (
@@ -76,7 +76,7 @@ export function GenPyramid({ data }: { data: { name: string; value: number }[] }
                 </div>
 
                 {/* Right side - Legend */}
-                <div className="w-1/3 flex flex-col justify-center gap-2 pl-3">
+                <div className="w-1/3 flex flex-col justify-center gap-2 pl-3 flex-shrink-0 min-w-[120px]">
                     {data.map((entry, index) => (
                         <div key={entry.name} className="flex items-center gap-2">
                             <div

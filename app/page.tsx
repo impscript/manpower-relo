@@ -185,7 +185,7 @@ export default async function Dashboard() {
       </div>
 
       {/* Top Section: KPI + Gender + Movement Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Headcount KPI Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-start justify-between">
@@ -209,20 +209,20 @@ export default async function Dashboard() {
         <GenderPieChart data={genderData} />
 
         {/* Movement Summary - spans 2 columns */}
-        <div className="lg:col-span-2">
+        <div className="md:col-span-2 xl:col-span-2">
           <MovementSummaryChart data={movementData} />
         </div>
       </div>
 
       {/* Middle Section: 3 Pie Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <ServiceYearsChart data={tenureData} />
         <PositionLevelPieChart data={positionData} />
         <GenPyramid data={genData} />
       </div>
 
       {/* Bottom Section: Reasons + Trend */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ReasonDonut data={reasonData} />
         <TrendChart data={trendData} />
       </div>

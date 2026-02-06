@@ -30,18 +30,18 @@ export function ReasonDonut({ data }: { data: { name: string; value: number }[] 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-80 flex flex-col">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Reason of Resigned - Voluntary</h3>
             <div className="flex-1 min-h-0 flex">
-                <div className="w-2/3">
+                <div className="flex-1 min-w-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                             layout="vertical"
                             data={enrichedData}
-                            margin={{ top: 5, right: 50, left: 10, bottom: 5 }}
+                            margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
                         >
                             <XAxis type="number" hide />
                             <YAxis
                                 type="category"
                                 dataKey="name"
-                                width={120}
+                                width={100}
                                 tick={{ fontSize: 10 }}
                                 axisLine={false}
                                 tickLine={false}
@@ -64,13 +64,13 @@ export function ReasonDonut({ data }: { data: { name: string; value: number }[] 
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="w-1/3 flex flex-col justify-center gap-2 border-l pl-4">
+                <div className="w-32 flex flex-col justify-center gap-2 border-l pl-4 flex-shrink-0">
                     <div className="text-3xl font-bold text-indigo-600">{topPercent}%</div>
-                    <div className="text-sm text-gray-600">{topItem.name}</div>
+                    <div className="text-sm text-gray-600 truncate" title={topItem.name}>{topItem.name}</div>
                     {enrichedData.slice(1, 3).map((item) => (
                         <div key={item.name} className="mt-2">
                             <div className="text-lg font-semibold text-gray-800">{item.percent}%</div>
-                            <div className="text-xs text-gray-500">{item.name}</div>
+                            <div className="text-xs text-gray-500 truncate" title={item.name}>{item.name}</div>
                         </div>
                     ))}
                 </div>

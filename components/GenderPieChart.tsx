@@ -38,7 +38,7 @@ export function GenderPieChart({ data }: { data: { name: string; value: number }
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-72 flex flex-col">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Gender Distribution</h3>
             <div className="flex-1 min-h-0 flex items-center">
-                <div className="w-1/2">
+                <div className="flex-1 min-w-0">
                     <ResponsiveContainer width="100%" height={160}>
                         <PieChart>
                             <Pie
@@ -47,7 +47,7 @@ export function GenderPieChart({ data }: { data: { name: string; value: number }
                                 cy="50%"
                                 labelLine={false}
                                 label={renderCustomizedLabel}
-                                outerRadius={70}
+                                outerRadius="80%"
                                 dataKey="value"
                             >
                                 {data.map((entry) => (
@@ -58,7 +58,7 @@ export function GenderPieChart({ data }: { data: { name: string; value: number }
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="w-1/2 flex flex-col gap-3">
+                <div className="w-1/2 flex flex-col gap-3 flex-shrink-0 min-w-[120px]">
                     {data.map((entry) => (
                         <div key={entry.name} className="flex items-center gap-3">
                             <div
